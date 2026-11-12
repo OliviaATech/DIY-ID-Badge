@@ -1,0 +1,149 @@
+#include <Arduino.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
+
+// Video animation frames
+#include "video_frames.h"
+
+// Original static image
+// #include "my_image.h"
+
+
+// =====================================
+// TFT DISPLAY PIN CONNECTIONS
+// Seeed Studio XIAO ESP32-C3
+// =====================================
+
+#define TFT_CS    3   // D1
+#define TFT_DC    4   // D2
+#define TFT_RST   5   // D3
+#define TFT_SCLK  8   // D8
+#define TFT_MOSI 10   // D10
+
+// =====================================
+// ON/OFF SWITCH CONNECTION
+// =====================================
+
+// Switch middle pin connected to D4
+// One outer pin connected to GND
+#define SWITCH_PIN 6  // D4
+
+// Tracks whether the screen is off
+bool screenOff = false;
+
+
+// =====================================
+// CREATE TFT DISPLAY OBJECT
+// =====================================
+
+// Using software SPI
+Adafruit_ST7789 tft = Adafruit_ST7789(
+    TFT_CS,
+    TFT_DC,
+    TFT_MOSI,
+    TFT_SCLK,
+    TFT_RST
+);
+
+
+// =====================================
+// SETUP FUNCTION
+// Runs once when XIAO turns on
+// =====================================
+
+void setup() {
+
+    // Start Serial Monitor
+    Serial.begin(115200);
+    delay(1000);
+
+    Serial.println("Starting DIY ID Badge...");
+
+    // Set up the switch as input
+    // Internal pull-up keeps the pin HIGH
+    // when the switch is disconnected
+    pinMode(SWITCH_PIN, INPUT_PULLUP);
+
+    // Initialize TFT screen
+    tft.init(240, 240);
+
+    // Rotate display 180 degrees
+    tft.setRotation(2);
+
+    // Clear screen to black
+    tft.fillScreen(ST77XX_BLACK);
+
+    Serial.println("TFT initialized!");
+}
+
+
+// =====================================
+// LOOP FUNCTION
+// Runs continuously
+// =====================================
+
+void loop() {
+
+    // =====================================
+    // CHECK ON/OFF SWITCH
+    // =====================================
+
+    // LOW means switch is ON
+    bool switchOn =
+        digitalRead(SWITCH_PIN) == LOW;
+
+    // If switch is OFF
+    if (!switchOn) {
+
+        // Clear the TFT only once
+        if (!screenOff) {
+
+            tft.fillScreen(ST77XX_BLACK);
+
+            Serial.println("Screen OFF");
+
+            screenOff = true;
+        }
+
+        // Stop here and check again
+        delay(50);
+        return;
+    }
+
+    // Switch is ON
+    if (screenOff) {
+
+        Serial.println("Screen ON");
+
+        screenOff = false;
+    }
+
+
+    // =====================================
+    // VIDEO ANIMATION (ACTIVE)
+    // =====================================
+
+    // Go through each video frame
+    for (int i = 0; i < videoFrameCount; i++) {
+
+        // Check switch before each frame
+        if (digitalRead(SWITCH_PIN) == HIGH) {
+
+            // Exit frame loop when OFF
+            break;
+        }
+
+        // Display current frame
+        tft.drawRGBBitmap(
+            0, 0,
+            videoFrames[i],
+            240, 240
+        );
+
+        // Wait before next frame
+        delay(200);
+    }
+
+    // Once all frames finish,
+    // loop starts again automatically
+}
